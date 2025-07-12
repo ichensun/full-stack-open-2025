@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+
 import Phonebook from './components/Phonebook';
 import PersonForm from './components/Personform';
 import Persons from './components/Persons';
+import Notification from './components/Notification';
 
 import personService from './services/persons';
 
@@ -11,6 +12,7 @@ const App = () => {
   const [newName, setNewName] = useState('');
   const [newNumber, setNewNumber] = useState('');
   const [filterName, setFilterName] = useState('');
+  const [message, setMessage] = useState({ text: null, type: null });
 
   // fetch initial data from the server
   useEffect(() => {
@@ -44,6 +46,20 @@ const App = () => {
             );
             setNewName('');
             setNewNumber('');
+            setMessage({
+              text: `Updated ${changedPerson.name}`,
+              type: 'success',
+            });
+            setTimeout(() => {
+              setMessage(null);
+            }, 5000);
+          })
+          .catch(() => {
+            setMessage({
+              text: `Information of ${changedPerson.name} has already been removed from server`,
+              type: 'error',
+            });
+            setPersons(persons.filter((p) => p.id !== changedPerson.id));
           });
       }
     } else {
@@ -53,11 +69,20 @@ const App = () => {
         id: String(persons.length + 1),
       };
 
-      personService.create(newPerson).then(() => {
-        setPersons(persons.concat(newPerson));
-        setNewName('');
-        setNewNumber('');
-      });
+      personService
+        .create(newPerson)
+        .then(() => {
+          setPersons(persons.concat(newPerson));
+          setNewName('');
+          setNewNumber('');
+          setMessage({ text: `Added ${newPerson.name}`, type: 'success' });
+          setTimeout(() => {
+            setMessage(null);
+          }, 5000);
+        })
+        .catch((error) =>
+          setMessage({ text: `[error] ${error.response.data}` })
+        );
     }
   };
 
@@ -69,6 +94,10 @@ const App = () => {
     if (window.confirm(`Delete ${person.name} ${person.number} ?`)) {
       personService.deletePerson(person.id).then(() => {
         setPersons(persons.filter((p) => p.id !== person.id));
+        setMessage(`Deleted ${person.name}`);
+        setTimeout(() => {
+          setMessage({ text: null, type: null });
+        }, 5000);
       });
     }
   };
@@ -76,6 +105,7 @@ const App = () => {
   return (
     <div>
       <h2>Phonebook</h2>
+      {message && <Notification message={message} />}
       <Phonebook
         value={filterName}
         onChange={(e) => setFilterName(e.target.value)}
